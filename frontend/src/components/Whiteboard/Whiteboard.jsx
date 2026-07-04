@@ -10,7 +10,10 @@ const COLORS = ['#000000', '#1d4ed8', '#dc2626', '#16a34a']
 const WIDTH = 800
 const HEIGHT = 520
 
-const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, questionMarks, onSaved }, ref) {
+const Whiteboard = forwardRef(function Whiteboard(
+  { questionId, questionText, questionMarks, model, onSaved },
+  ref
+) {
   const { strokes, addStroke, undo, removeStroke, clear, load } = useWhiteboard()
   const [tool, setTool] = useState('pen')
   const [color, setColor] = useState(COLORS[0])
@@ -148,7 +151,7 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
         question_text: questionText ?? '',
         image_base64: dataUrl,
         marks: questionMarks ?? 3,
-        model: 'gemini-2.5-flash',
+        model: model || 'gemini-2.5-flash-lite',
       }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/mark`, {

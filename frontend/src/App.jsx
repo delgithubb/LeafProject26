@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import Whiteboard from './components/Whiteboard/Whiteboard'
 import QuestionPanel from './components/QuestionPanel/QuestionPanel'
 import HistorySidebar from './components/HistorySidebar/HistorySidebar'
+import SettingsPanel from './components/SettingsPanel/SettingsPanel'
 import './App.css'
 
 // Path to the bundled question set. May move once question sets are selectable.
 const QUESTION_SET_PATH = '/questions.json'
+const DEFAULT_MODEL = 'gemini-2.5-flash-lite'
 
 function App() {
   const [questionSet, setQuestionSet] = useState(null)
@@ -14,6 +16,23 @@ function App() {
   // "saved" just because a previous session left files on disk.
   const [savedIds, setSavedIds] = useState(new Set())
   const whiteboardRef = useRef(null)
+
+  // null = no explicit choice yet, follow the OS/browser preference (see index.css)
+  const [theme, setTheme] = useState(() => localStorage.getItem('maths-tutor-theme') || null)
+  const [model, setModel] = useState(() => localStorage.getItem('maths-tutor-model') || DEFAULT_MODEL)
+
+  useEffect(() => {
+    if (theme) {
+      document.documentElement.dataset.theme = theme
+      localStorage.setItem('maths-tutor-theme', theme)
+    } else {
+      delete document.documentElement.dataset.theme
+    }
+  }, [theme])
+
+  useEffect(() => {
+    localStorage.setItem('maths-tutor-model', model)
+  }, [model])
 
   useEffect(() => {
     fetch(QUESTION_SET_PATH)
@@ -35,6 +54,8 @@ function App() {
 
   return (
     <main className="app">
+      <SettingsPanel theme={theme} onThemeChange={setTheme} model={model} onModelChange={setModel} />
+
       {questionSet && (
         <HistorySidebar
           questions={questionSet.questions}
@@ -58,6 +79,7 @@ function App() {
           questionId={question?.id}
           questionText={question?.text ?? ''}
           questionMarks={question?.marks ?? 3}
+          model={model}
           onSaved={handleSaved}
         />
       </div>

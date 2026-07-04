@@ -15,6 +15,7 @@ load_dotenv()
 
 app = FastAPI(title="A-Level Maths Tutor Backend", version="0.1.0")
 
+
 # Allow the frontend dev server to talk to the backend locally
 cors_origins = [
     origin.strip()
@@ -85,14 +86,28 @@ def _decode_image_payload(image_payload: str) -> Tuple[bytes, str]:
 
 
 def _get_gemini_client() -> genai.Client:
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    # --- DEBUG LOGS START ---
+    print("\n=== DEBUG: GEMINI INITIALIZATION ===")
+    print(f"Type of api_key variable: {type(api_key)}")
+    if api_key:
+        print(f"API Key Length: {len(api_key)} characters")
+        print(f"API Key starts with: '{api_key[:7]}...'")
+        print(f"API Key ends with: '...{api_key[-4:] if len(api_key) > 4 else ''}'")
+    else:
+        print("CRITICAL: GEMINI_API_KEY is completely empty or None!")
+    print("====================================\n")
+    # --- DEBUG LOGS END ---
+
     if not api_key:
-        raise RuntimeError("Missing GEMINI_API_KEY or GOOGLE_API_KEY environment variable.")
+        raise RuntimeError("Missing GEMINI_API_KEY environment variable.")
 
     try:
+        # Explicitly pass the key argument
         return genai.Client(api_key=api_key)
-    except Exception as exc:  # pragma: no cover - defensive initialization guard
-        raise RuntimeError(f"Failed to initialize Gemini client: {exc}") from exc
+    except Exception as exc:  # pragma: no cover
+        raise RuntimeError(f"Failed to initialize Gemini client inside try-except: {exc}") from exc
 
 
 @app.post("/api/mark", response_model=MarkingResult)

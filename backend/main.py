@@ -183,6 +183,8 @@ Instructions:
 5. Make each box slightly larger than the handwriting, with about 8-12% padding.
 6. If the handwriting is small or unclear, prefer a slightly wider box over a very tight one.
 7. Keep the box dimensions at least around 0.03 to 0.05 of the image when possible.
+8. Just respond with one block of completion text with any extra working needed all together and its position a bit beneath the written working
+9. However for each character in each line, create a bbox for each incorrect character and if there are multiple in the same line make them horizontally aligned.
 """
 
     try:

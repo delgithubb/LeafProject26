@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Stage, Layer, Line } from 'react-konva'
 import GridBackground from './GridBackground'
 import { useWhiteboard } from '../../hooks/useWhiteboard'
@@ -8,15 +8,28 @@ const COLORS = ['#000000', '#1d4ed8', '#dc2626', '#16a34a']
 const WIDTH = 800
 const HEIGHT = 520
 
-function Whiteboard({ questionId }) {
-  const { strokes, addStroke, undo, removeStroke, clear } = useWhiteboard()
+const Whiteboard = forwardRef(function Whiteboard({ questionId, onSaved }, ref) {
+  const { strokes, addStroke, undo, removeStroke, clear, load } = useWhiteboard()
   const [tool, setTool] = useState('pen')
   const [color, setColor] = useState(COLORS[0])
   const isDrawing = useRef(false)
   const currentPoints = useRef([])
   const [livePoints, setLivePoints] = useState(null)
-  const [saving, setSaving] = useState(false)
   const stageRef = useRef(null)
+  const strokesRef = useRef(strokes)
+  strokesRef.current = strokes
+  const dirtyRef = useRef(false)
+
+  useEffect(() => {
+    if (!questionId) return
+    fetch(`/whiteboards/${questionId}.json?t=${Date.now()}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((loaded) => {
+        load(loaded)
+        dirtyRef.current = false
+      })
+      .catch(() => load([]))
+  }, [questionId, load])
 
   const handlePointerDown = (e) => {
     if (tool !== 'pen') return
@@ -38,6 +51,7 @@ function Whiteboard({ questionId }) {
     isDrawing.current = false
     if (currentPoints.current.length >= 4) {
       addStroke({ points: currentPoints.current, color })
+      dirtyRef.current = true
     }
     currentPoints.current = []
     setLivePoints(null)
@@ -46,22 +60,36 @@ function Whiteboard({ questionId }) {
   const handleStrokeClick = (index) => {
     if (tool !== 'eraser') return
     removeStroke(index)
+    dirtyRef.current = true
   }
 
-  const handleSave = async () => {
-    if (!stageRef.current) return
-    setSaving(true)
-    try {
+  const handleUndo = () => {
+    undo()
+    dirtyRef.current = true
+  }
+
+  const handleClear = () => {
+    clear()
+    dirtyRef.current = true
+  }
+
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      if (!stageRef.current || !dirtyRef.current) return
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 })
       await fetch('/api/whiteboards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: questionId ?? 'whiteboard', dataUrl }),
+        body: JSON.stringify({
+          filename: questionId ?? 'whiteboard',
+          dataUrl,
+          strokes: strokesRef.current,
+        }),
       })
-    } finally {
-      setSaving(false)
-    }
-  }
+      dirtyRef.current = false
+      onSaved?.(questionId)
+    },
+  }))
 
   return (
     <div className="whiteboard">
@@ -85,11 +113,8 @@ function Whiteboard({ questionId }) {
             />
           ))}
         </div>
-        <button onClick={undo}>Undo</button>
-        <button onClick={clear}>Clear</button>
-        <button onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
-        </button>
+        <button onClick={handleUndo}>Undo</button>
+        <button onClick={handleClear}>Clear</button>
       </div>
 
       <Stage
@@ -135,6 +160,6 @@ function Whiteboard({ questionId }) {
       </Stage>
     </div>
   )
-}
+})
 
 export default Whiteboard

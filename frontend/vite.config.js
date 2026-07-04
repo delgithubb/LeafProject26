@@ -22,12 +22,16 @@ function saveWhiteboardPlugin() {
         })
         req.on('end', () => {
           try {
-            const { filename, dataUrl } = JSON.parse(body)
+            const { filename, dataUrl, strokes } = JSON.parse(body)
             const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
             const safeName = String(filename).replace(/[^a-zA-Z0-9_-]/g, '') || 'whiteboard'
 
             fs.mkdirSync(WHITEBOARDS_DIR, { recursive: true })
             fs.writeFileSync(path.join(WHITEBOARDS_DIR, `${safeName}.png`), base64, 'base64')
+            fs.writeFileSync(
+              path.join(WHITEBOARDS_DIR, `${safeName}.json`),
+              JSON.stringify(strokes ?? [])
+            )
 
             res.statusCode = 200
             res.setHeader('Content-Type', 'application/json')

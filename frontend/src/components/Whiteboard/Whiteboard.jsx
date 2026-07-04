@@ -8,14 +8,14 @@ const COLORS = ['#000000', '#1d4ed8', '#dc2626', '#16a34a']
 const WIDTH = 800
 const HEIGHT = 520
 
-function Whiteboard({ questionId }) {
+function Whiteboard({ questionId, questionText, questionMarks }) {
   const { strokes, addStroke, undo, removeStroke, clear } = useWhiteboard()
   const [tool, setTool] = useState('pen')
   const [color, setColor] = useState(COLORS[0])
   const isDrawing = useRef(false)
   const currentPoints = useRef([])
   const [livePoints, setLivePoints] = useState(null)
-  const [saving, setSaving] = useState(false)
+  const [marking, setMarking] = useState(false)
   const stageRef = useRef(null)
 
   const handlePointerDown = (e) => {
@@ -48,18 +48,39 @@ function Whiteboard({ questionId }) {
     removeStroke(index)
   }
 
-  const handleSave = async () => {
+  const handleMark = async () => {
     if (!stageRef.current) return
-    setSaving(true)
+
+    setMarking(true)
     try {
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 })
-      await fetch('/api/whiteboards', {
+      const payload = {
+        session_id: 'demo-session',
+        question_id: questionId ?? 'demo-question',
+        question_text: questionText,
+        image_base64: dataUrl,
+        marks: questionMarks,
+        model: 'gemini-2.5-flash',
+      }
+
+      console.log('Sending whiteboard image to backend...', payload)
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: questionId ?? 'whiteboard', dataUrl }),
+        body: JSON.stringify(payload),
       })
+
+      const data = await response.json()
+      console.log('Gemini response:', data)
+
+      if (!response.ok) {
+        console.error('Backend error:', data)
+      }
+    } catch (error) {
+      console.error('Failed to call backend:', error)
     } finally {
-      setSaving(false)
+      setMarking(false)
     }
   }
 
@@ -87,8 +108,8 @@ function Whiteboard({ questionId }) {
         </div>
         <button onClick={undo}>Undo</button>
         <button onClick={clear}>Clear</button>
-        <button onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
+        <button onClick={handleMark} disabled={marking}>
+          {marking ? 'Checking…' : 'Mark my work'}
         </button>
       </div>
 

@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Load environment variables from .env
 load_dotenv()
@@ -19,12 +19,16 @@ app = FastAPI(title="A-Level Maths Tutor Backend", version="0.1.0")
 # Allow the frontend dev server to talk to the backend locally
 cors_origins = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000",
+    ).split(",")
     if origin.strip()
 ]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=r"http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,15 +36,54 @@ app.add_middleware(
 
 
 class ErrorRegion(BaseModel):
-    bbox: list[float]
+    bbox: list[float] = Field(
+        ...,
+        description="Normalized [x, y, width, height] for the error region relative to the image.",
+    )
+    image_relative_bbox: list[float] = Field(
+        ...,
+        description="Normalized [x, y, width, height] for the same error line region relative to the full image.",
+    )
     line_index: int
     explanation: str
+
+    @field_validator("bbox", "image_relative_bbox")
+    @classmethod
+    def validate_bbox(cls, value: list[float]) -> list[float]:
+        if len(value) != 4:
+            raise ValueError("bbox values must contain exactly four numbers: [x, y, width, height]")
+        return value
 
 
 class CompletionStep(BaseModel):
     text: str
-    bbox: list[float]
+    bbox: list[float] = Field(
+        ...,
+        description="Normalized [x, y, width, height] for the completion text box relative to the image.",
+    )
+    image_relative_bbox: list[float] = Field(
+        ...,
+        description="Normalized [x, y, width, height] for the completion text box relative to the full image.",
+    )
+    image_relative_line_position: list[float] = Field(
+        ...,
+        description="Normalized [x, y] coordinate for the line where this completion should appear relative to the image.",
+    )
     font_size_px: int
+
+    @field_validator("bbox", "image_relative_bbox")
+    @classmethod
+    def validate_completion_bbox(cls, value: list[float]) -> list[float]:
+        if len(value) != 4:
+            raise ValueError("completion bbox values must contain exactly four numbers: [x, y, width, height]")
+        return value
+
+    @field_validator("image_relative_line_position")
+    @classmethod
+    def validate_line_position(cls, value: list[float]) -> list[float]:
+        if len(value) != 2:
+            raise ValueError("completion line position must contain exactly two numbers: [x, y]")
+        return value
 
 
 class MarkingResult(BaseModel):
@@ -136,9 +179,10 @@ Instructions:
 1. Read the working line by line.
 2. Compare it to the expected A-level method for the given question.
 3. Return structured feedback in JSON only.
-4. Use normalized bounding boxes in the range [0, 1] relative to the image.
-5. For missing or incorrect steps, include short completion steps positioned below the last valid line.
-6. Keep the summary concise and encouraging.
+4. For each error region, provide `bbox` and `image_relative_bbox` as normalized [x, y, width, height] values in the range [0, 1] relative to the full image.
+5. For each completion step, provide `bbox` and `image_relative_bbox` as normalized [x, y, width, height] values, plus `image_relative_line_position` as a normalized [x, y] coordinate for the line where the completion should appear.
+6. Place completion steps below the last valid line or at a sensible nearby line position when the handwriting is unclear.
+7. Keep the summary concise and encouraging.
 """
 
     try:

@@ -30,7 +30,12 @@ function App() {
             setIndex((i) => Math.min((questionSet?.questions.length ?? 1) - 1, i + 1))
           }
         />
-        <Whiteboard key={question?.id} questionId={question?.id} />
+        <Whiteboard
+          key={question?.id}
+          questionId={question?.id}
+          questionText={question?.text ?? ''}
+          questionMarks={question?.marks ?? 3}
+        />
       </div>
     </main>
   )

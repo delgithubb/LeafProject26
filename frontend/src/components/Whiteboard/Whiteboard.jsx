@@ -74,6 +74,24 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
     dirtyRef.current = true
   }
 
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      if (!stageRef.current || !dirtyRef.current) return
+      const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 })
+      await fetch('/api/whiteboards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: questionId ?? 'whiteboard',
+          dataUrl,
+          strokes: strokesRef.current,
+        }),
+      })
+      dirtyRef.current = false
+      onSaved?.(questionId)
+    },
+  }))
+
   const submitForMarking = async () => {
     if (!stageRef.current) return
 

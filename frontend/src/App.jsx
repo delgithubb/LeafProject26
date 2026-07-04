@@ -66,6 +66,8 @@ function App() {
           key={question?.id}
           ref={whiteboardRef}
           questionId={question?.id}
+          questionText={question?.text ?? ''}
+          questionMarks={question?.marks ?? 3}
           onSaved={handleSaved}
         />
       </div>

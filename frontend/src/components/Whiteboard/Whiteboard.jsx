@@ -8,10 +8,11 @@ const COLORS = ['#000000', '#1d4ed8', '#dc2626', '#16a34a']
 const WIDTH = 800
 const HEIGHT = 520
 
-const Whiteboard = forwardRef(function Whiteboard({ questionId, onSaved }, ref) {
+const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, questionMarks, onSaved }, ref) {
   const { strokes, addStroke, undo, removeStroke, clear, load } = useWhiteboard()
   const [tool, setTool] = useState('pen')
   const [color, setColor] = useState(COLORS[0])
+  const [marking, setMarking] = useState(false)
   const isDrawing = useRef(false)
   const currentPoints = useRef([])
   const [livePoints, setLivePoints] = useState(null)
@@ -73,17 +74,19 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, onSaved }, ref) 
     dirtyRef.current = true
   }
 
-  useImperativeHandle(ref, () => ({
-    save: async () => {
-      if (!stageRef.current || !dirtyRef.current) return
+  const submitForMarking = async () => {
+    if (!stageRef.current) return
+
+    setMarking(true)
+    try {
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 })
       const payload = {
         session_id: 'demo-session',
         question_id: questionId ?? 'demo-question',
-        question_text: questionText,
+        question_text: questionText ?? '',
         image_base64: dataUrl,
-        marks: questionMarks,
-        model: 'gemini-2.5-flash',
+        marks: questionMarks ?? 3,
+        model: 'gemini-2.5-flash-lite',
       }
 
       console.log('Sending whiteboard image to backend...', payload)
@@ -91,16 +94,27 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, onSaved }, ref) 
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: questionId ?? 'whiteboard',
-          dataUrl,
-          strokes: strokesRef.current,
-        }),
+        body: JSON.stringify(payload),
       })
+
+      const data = await response.json()
+      console.log('Gemini response:', data)
+
+      if (!response.ok) {
+        console.error('Backend error:', data)
+        return false
+      }
+
       dirtyRef.current = false
       onSaved?.(questionId)
-    },
-  }))
+      return true
+    } catch (error) {
+      console.error('Failed to call backend:', error)
+      return false
+    } finally {
+      setMarking(false)
+    }
+  }
 
   return (
     <div className="whiteboard">
@@ -126,6 +140,9 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, onSaved }, ref) 
         </div>
         <button onClick={handleUndo}>Undo</button>
         <button onClick={handleClear}>Clear</button>
+        <button onClick={submitForMarking} disabled={marking}>
+          {marking ? 'Checking…' : 'Mark my answer'}
+        </button>
       </div>
 
       <Stage

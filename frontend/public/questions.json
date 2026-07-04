@@ -1,0 +1,27 @@
+{
+  "id": "calculus-full-demo",
+  "title": "Calculus Demonstration Set",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "Differentiate \\(y = 3x^2 + 5x\\).",
+      "topic": "Calculus",
+      "marks": 3,
+      "hint": "Use the power rule."
+    },
+    {
+      "id": "q2",
+      "text": "Find the derivative of \\(f(x) = \\sin(x) + e^x\\).",
+      "topic": "Calculus",
+      "marks": 4,
+      "hint": "Differentiate each term separately using standard trigonometric and exponential rules."
+    },
+    {
+      "id": "q3",
+      "text": "Evaluate the indefinite integral \\(\\int (4x^3 - 2x) \\, dx\\).",
+      "topic": "Calculus",
+      "marks": 4,
+      "hint": "Apply the reverse power rule and don't forget the constant of integration."
+    }
+  ]
+}

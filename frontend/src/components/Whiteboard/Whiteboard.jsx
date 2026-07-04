@@ -23,9 +23,26 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
   const currentPoints = useRef([])
   const [livePoints, setLivePoints] = useState(null)
   const stageRef = useRef(null)
+  const containerRef = useRef(null)
+  const [scale, setScale] = useState(1)
   const strokesRef = useRef(strokes)
   strokesRef.current = strokes
   const dirtyRef = useRef(false)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const updateScale = () => {
+      const containerWidth = container.clientWidth
+      if (containerWidth > 0) setScale(containerWidth / WIDTH)
+    }
+
+    updateScale()
+    const observer = new ResizeObserver(updateScale)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!questionId) return
@@ -45,7 +62,7 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
 
   const handlePointerDown = (e) => {
     if (isReadOnly || tool !== 'pen') return
-    const pos = e.target.getStage().getPointerPosition()
+    const pos = e.target.getStage().getRelativePointerPosition()
     isDrawing.current = true
     currentPoints.current = [pos.x, pos.y]
     setLivePoints([...currentPoints.current])
@@ -53,7 +70,7 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
 
   const handlePointerMove = (e) => {
     if (!isDrawing.current) return
-    const pos = e.target.getStage().getPointerPosition()
+    const pos = e.target.getStage().getRelativePointerPosition()
     currentPoints.current = [...currentPoints.current, pos.x, pos.y]
     setLivePoints([...currentPoints.current])
   }
@@ -200,10 +217,13 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
       </div>
 
       <div className="whiteboard-row">
+        <div ref={containerRef} className="whiteboard-stage-wrapper">
         <Stage
           ref={stageRef}
-          width={WIDTH}
-          height={HEIGHT}
+          width={WIDTH * scale}
+          height={HEIGHT * scale}
+          scaleX={scale}
+          scaleY={scale}
           onMouseDown={handlePointerDown}
           onMouseMove={handlePointerMove}
           onMouseUp={handlePointerUp}
@@ -248,6 +268,7 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
             onHoverError={setHoveredIndex}
           />
         </Stage>
+        </div>
 
         <FeedbackSidePanel markingResult={markingResult} hoveredIndex={hoveredIndex} />
       </div>

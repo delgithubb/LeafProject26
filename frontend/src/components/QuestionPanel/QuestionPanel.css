@@ -1,9 +1,10 @@
 .question-panel {
-  width: 800px;
-  max-width: 100%;
-  padding: 16px;
+  width: 100%;
+  max-width: 800px;
+  padding: 18px 20px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
   text-align: left;
 }
 
@@ -22,13 +23,18 @@
 }
 
 .question-hint button {
-  padding: 4px 10px;
+  padding: 5px 12px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--bg);
   color: var(--text-h);
   cursor: pointer;
   font-size: 13px;
+  transition: border-color 0.15s ease;
+}
+
+.question-hint button:hover {
+  border-color: var(--accent-border);
 }
 
 .question-hint p {
@@ -47,12 +53,17 @@
 }
 
 .question-nav button {
-  padding: 6px 12px;
+  padding: 7px 14px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 8px;
   background: var(--bg);
   color: var(--text-h);
   cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.question-nav button:hover:not(:disabled) {
+  border-color: var(--accent-border);
 }
 
 .question-nav button:disabled {

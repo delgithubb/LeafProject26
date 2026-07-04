@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { InlineMath } from 'react-katex'
+import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import './QuestionPanel.css'
 
 function renderText(text) {
   const parts = text.split(/\\\((.*?)\\\)/g)
-  return parts.map((part, i) =>
-    i % 2 === 1 ? <InlineMath key={i} math={part} /> : <span key={i}>{part}</span>
-  )
+  return parts.map((part, i) => {
+    if (i % 2 !== 1) return <span key={i}>{part}</span>
+    const html = katex.renderToString(part, { throwOnError: false })
+    return <span key={i} dangerouslySetInnerHTML={{ __html: html }} />
+  })
 }
 
 function QuestionPanel({ question, questionNumber, totalQuestions, onPrev, onNext }) {

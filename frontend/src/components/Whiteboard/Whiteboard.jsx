@@ -36,6 +36,11 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
         dirtyRef.current = false
       })
       .catch(() => load([]))
+
+    fetch(`/whiteboards/${questionId}.marking.json?t=${Date.now()}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then(setMarkingResult)
+      .catch(() => setMarkingResult(null))
   }, [questionId, load])
 
   const handlePointerDown = (e) => {
@@ -86,23 +91,30 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
     setMarkingResult(null)
     setMarkError(null)
     setHoveredIndex(null)
+    dirtyRef.current = true
+  }
+
+  const persistWhiteboard = async (markingOverride) => {
+    if (!stageRef.current) return
+    const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 })
+    await fetch('/api/whiteboards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: questionId ?? 'whiteboard',
+        dataUrl,
+        strokes: strokesRef.current,
+        marking: markingOverride !== undefined ? markingOverride : markingResult,
+      }),
+    })
+    dirtyRef.current = false
+    onSaved?.(questionId)
   }
 
   useImperativeHandle(ref, () => ({
     save: async () => {
-      if (!stageRef.current || !dirtyRef.current) return
-      const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 })
-      await fetch('/api/whiteboards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename: questionId ?? 'whiteboard',
-          dataUrl,
-          strokes: strokesRef.current,
-        }),
-      })
-      dirtyRef.current = false
-      onSaved?.(questionId)
+      if (!dirtyRef.current) return
+      await persistWhiteboard()
     },
   }))
 
@@ -119,11 +131,9 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
         question_text: questionText ?? '',
         image_base64: dataUrl,
         marks: questionMarks ?? 3,
-        model: 'gemini-3.1-flash-lite',
+        model: 'gemini-2.5-flash',
       }
-      
-      console.log("Sending image to backend",payload)
-      console.log(data)
+
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -138,8 +148,7 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
       }
 
       setMarkingResult(data)
-      dirtyRef.current = false
-      onSaved?.(questionId)
+      await persistWhiteboard(data)
     } catch {
       setMarkError('Could not reach the marking service.')
     } finally {

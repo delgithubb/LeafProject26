@@ -22,7 +22,7 @@ function saveWhiteboardPlugin() {
         })
         req.on('end', () => {
           try {
-            const { filename, dataUrl, strokes } = JSON.parse(body)
+            const { filename, dataUrl, strokes, marking } = JSON.parse(body)
             const base64 = dataUrl.replace(/^data:image\/png;base64,/, '')
             const safeName = String(filename).replace(/[^a-zA-Z0-9_-]/g, '') || 'whiteboard'
 
@@ -31,6 +31,10 @@ function saveWhiteboardPlugin() {
             fs.writeFileSync(
               path.join(WHITEBOARDS_DIR, `${safeName}.json`),
               JSON.stringify(strokes ?? [])
+            )
+            fs.writeFileSync(
+              path.join(WHITEBOARDS_DIR, `${safeName}.marking.json`),
+              JSON.stringify(marking ?? null)
             )
 
             res.statusCode = 200

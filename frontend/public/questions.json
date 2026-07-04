@@ -22,6 +22,13 @@
       "topic": "Calculus",
       "marks": 4,
       "hint": "Apply the reverse power rule and don't forget the constant of integration."
+    },
+    {
+      "id": "q4",
+      "text": "Find the equation of the tangent line to the curve \\(y = x^3 - 2x^2 + 4\\) at the point where \\(x = 2\\).",
+      "topic": "Calculus",
+      "marks": 6,
+      "hint": "First, find the derivative \\(\\frac{dy}{dx}\\) to determine the gradient function. Substitute \\(x = 2\\) to find the specific gradient and the corresponding \\(y\\)-value, then use the point-slope form to write the equation."
     }
   ]
 }

@@ -12,6 +12,10 @@ function SettingsPanel({ theme, onThemeChange, model, onModelChange }) {
 
   return (
     <div className="settings-panel">
+      <span className="app-logo">
+        The<span className="app-logo-red">Red</span>Pen
+      </span>
+
       <button
         className="settings-gear"
         aria-label="Settings"

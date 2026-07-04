@@ -1,4 +1,4 @@
-import { Layer, Rect, Text } from 'react-konva'
+import { Layer, Text } from 'react-konva'
 
 const MIN_FONT = 14
 const MAX_FONT = 36
@@ -7,7 +7,9 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
 
-function normalizeBox(box) {
+// Shared with Whiteboard.jsx so stroke-matching uses the same tolerance as
+// whatever padding this box gets for display purposes.
+export function normalizeBox(box) {
   if (!box || box.length !== 4) return { x: 0, y: 0, width: 0.05, height: 0.05 }
 
   const [x, y, w, h] = box.map(Number)
@@ -27,35 +29,12 @@ function scaledFontSize(fontSizePx, height) {
   return Math.min(MAX_FONT, Math.max(MIN_FONT, estimated))
 }
 
-function FeedbackOverlay({ markingResult, width, height, hoveredIndex, onHoverError }) {
+// Error regions are shown by recoloring the matching student strokes red
+// (see Whiteboard.jsx) rather than drawing boxes over them here.
+function FeedbackOverlay({ markingResult, width, height }) {
   if (!markingResult) return null
   return (
     <Layer>
-      {markingResult.errors.map((error, i) => {
-        const normalizedBox = normalizeBox(error.image_relative_bbox)
-        const isHovered = hoveredIndex === i
-        return (
-          <Rect
-            key={i}
-            x={normalizedBox.x * width}
-            y={normalizedBox.y * height}
-            width={normalizedBox.width * width}
-            height={normalizedBox.height * height}
-            fill={isHovered ? 'rgba(220, 38, 38, 0.35)' : 'rgba(220, 38, 38, 0.2)'}
-            // stroke="#dc2626"
-            // strokeWidth={isHovered ? 2 : 1}
-            onMouseEnter={(e) => {
-              onHoverError(i)
-              e.target.getStage().container().style.cursor = 'pointer'
-            }}
-            onMouseLeave={(e) => {
-              onHoverError(null)
-              e.target.getStage().container().style.cursor = 'default'
-            }}
-          />
-        )
-      })}
-
       {markingResult.completions.map((completion, i) => {
         const position = completion.image_relative_line_position
         return (

@@ -141,6 +141,7 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
       })
 
       const data = await response.json()
+      console.log(data);
 
       if (!response.ok) {
         setMarkError(data?.detail ?? 'Marking failed — try again.')

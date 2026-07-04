@@ -177,12 +177,12 @@ Marks available: {payload.marks if payload.marks is not None else 'unknown'}
 
 Instructions:
 1. Read the working line by line.
-2. Compare it to the expected A-level method for the given question.
+2. Compare it to the expected method.
 3. Return structured feedback in JSON only.
-4. For each error region, provide `bbox` and `image_relative_bbox` as normalized [x, y, width, height] values in the range [0, 1] relative to the full image.
-5. For each completion step, provide `bbox` and `image_relative_bbox` as normalized [x, y, width, height] values, plus `image_relative_line_position` as a normalized [x, y] coordinate for the line where the completion should appear.
-6. Place completion steps below the last valid line or at a sensible nearby line position when the handwriting is unclear.
-7. Keep the summary concise and encouraging.
+4. For each error region, provide a box that covers the full mistaken line or term.
+5. Make each box slightly larger than the handwriting, with about 8-12% padding.
+6. If the handwriting is small or unclear, prefer a slightly wider box over a very tight one.
+7. Keep the box dimensions at least around 0.03 to 0.05 of the image when possible.
 """
 
     try:

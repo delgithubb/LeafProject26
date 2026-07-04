@@ -1,0 +1,32 @@
+.feedback-panel {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-align: left;
+}
+
+.feedback-panel h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.feedback-summary {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.feedback-explanation p {
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.feedback-hint {
+  color: var(--text);
+  font-style: italic;
+}

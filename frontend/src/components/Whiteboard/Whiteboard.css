@@ -24,6 +24,22 @@
   background: var(--accent-bg);
 }
 
+.whiteboard-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.whiteboard-error {
+  font-size: 13px;
+  color: #dc2626;
+}
+
+.whiteboard-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .whiteboard-colors {
   display: flex;
   gap: 4px;
@@ -39,6 +55,11 @@
 
 .color-swatch.active {
   border-color: var(--accent);
+}
+
+.color-swatch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .whiteboard-stage {

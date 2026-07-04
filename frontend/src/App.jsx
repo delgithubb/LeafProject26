@@ -7,35 +7,25 @@ import './App.css'
 // Path to the bundled question set. May move once question sets are selectable.
 const QUESTION_SET_PATH = '/questions.json'
 
-function savedIdsKey(setId) {
-  return `maths-tutor-saved:${setId}`
-}
-
 function App() {
   const [questionSet, setQuestionSet] = useState(null)
   const [index, setIndex] = useState(0)
+  // Session-only: intentionally not persisted, so questions never show as
+  // "saved" just because a previous session left files on disk.
   const [savedIds, setSavedIds] = useState(new Set())
   const whiteboardRef = useRef(null)
 
   useEffect(() => {
     fetch(QUESTION_SET_PATH)
       .then((res) => res.json())
-      .then((data) => {
-        setQuestionSet(data)
-        const stored = localStorage.getItem(savedIdsKey(data.id))
-        setSavedIds(new Set(stored ? JSON.parse(stored) : []))
-      })
+      .then(setQuestionSet)
   }, [])
 
   const question = questionSet?.questions[index]
 
   const handleSaved = (questionId) => {
-    if (!questionId || !questionSet) return
-    setSavedIds((prev) => {
-      const next = new Set(prev).add(questionId)
-      localStorage.setItem(savedIdsKey(questionSet.id), JSON.stringify([...next]))
-      return next
-    })
+    if (!questionId) return
+    setSavedIds((prev) => new Set(prev).add(questionId))
   }
 
   const goToIndex = async (nextIndex) => {

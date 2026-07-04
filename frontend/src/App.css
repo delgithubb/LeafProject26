@@ -1,13 +1,42 @@
 .app {
   display: flex;
-  justify-content: center;
   align-items: flex-start;
-  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
   padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .app-column {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1 1 640px;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  /* Question + whiteboard take priority over history on small screens. */
+  .app-column {
+    order: 1;
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  .history-sidebar {
+    order: 2;
+    width: 100%;
+  }
+
+  .history-sidebar.collapsed {
+    width: 100%;
+  }
 }

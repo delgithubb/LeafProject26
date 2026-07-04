@@ -148,7 +148,7 @@ const Whiteboard = forwardRef(function Whiteboard({ questionId, questionText, qu
         question_text: questionText ?? '',
         image_base64: dataUrl,
         marks: questionMarks ?? 3,
-        model: 'gemini-2.5-flash`',
+        model: 'gemini-2.5-flash',
       }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/mark`, {

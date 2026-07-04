@@ -29,7 +29,6 @@ function scaledFontSize(fontSizePx, height) {
 
 function FeedbackOverlay({ markingResult, width, height, hoveredIndex, onHoverError }) {
   if (!markingResult) return null
-  console.log(markingResult);
   return (
     <Layer>
       {markingResult.errors.map((error, i) => {

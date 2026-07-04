@@ -1,14 +1,55 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Stage, Layer, Line } from 'react-konva'
 import GridBackground from './GridBackground'
-import FeedbackOverlay from '../FeedbackOverlay/FeedbackOverlay'
+import FeedbackOverlay, { normalizeBox } from '../FeedbackOverlay/FeedbackOverlay'
 import FeedbackSidePanel from '../FeedbackOverlay/FeedbackSidePanel'
 import { useWhiteboard } from '../../hooks/useWhiteboard'
 import './Whiteboard.css'
 
 const COLORS = ['#000000', '#1d4ed8', '#dc2626', '#16a34a']
+const ERROR_COLOR = '#dc2626'
 const WIDTH = 800
 const HEIGHT = 520
+
+function strokeInBox(stroke, box) {
+  const points = stroke.points
+  for (let i = 0; i < points.length; i += 2) {
+    const x = points[i] / WIDTH
+    const y = points[i + 1] / HEIGHT
+    if (x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height) {
+      return true
+    }
+  }
+  return false
+}
+
+function findErrorIndexForStroke(stroke, errors) {
+  if (!errors) return -1
+  return errors.findIndex((error) => strokeInBox(stroke, normalizeBox(error.image_relative_bbox)))
+}
+
+// Translates raw backend/Gemini error text into plain-language messages a
+// student can act on, instead of surfacing technical API detail.
+function friendlyMarkError(status, detail) {
+  const text = (detail || '').toLowerCase()
+
+  if (text.includes('unavailable') || text.includes('high demand') || text.includes('503')) {
+    return "The marking service is busy right now. Please wait a moment and try again."
+  }
+  if (text.includes('gemini_api_key') || text.includes('missing') ) {
+    return "The marking service isn't set up correctly. Please let your teacher know."
+  }
+  if (text.includes('image payload cannot be empty') || text.includes('invalid base64')) {
+    return "We couldn't read your whiteboard. Try drawing something before marking."
+  }
+  if (text.includes('question text cannot be empty')) {
+    return "This question is missing its text — try reloading the page."
+  }
+  if (status >= 500) {
+    return "Something went wrong while marking your work. Please try again in a moment."
+  }
+  return "We couldn't submit your work for marking. Please try again."
+}
 
 const Whiteboard = forwardRef(function Whiteboard(
   { questionId, questionText, questionMarks, model, onSaved },
@@ -161,17 +202,18 @@ const Whiteboard = forwardRef(function Whiteboard(
       })
 
       const data = await response.json()
-      console.log(data);
 
       if (!response.ok) {
-        setMarkError(data?.detail ?? 'Marking failed — try again.')
+        console.error('Marking request failed:', data)
+        setMarkError(friendlyMarkError(response.status, data?.detail))
         return
       }
 
       setMarkingResult(data)
       await persistWhiteboard(data)
-    } catch {
-      setMarkError('Could not reach the marking service.')
+    } catch (error) {
+      console.error('Failed to reach marking service:', error)
+      setMarkError('Could not reach the marking service. Check your connection and try again.')
     } finally {
       setMarking(false)
     }
@@ -240,37 +282,39 @@ const Whiteboard = forwardRef(function Whiteboard(
             <GridBackground width={WIDTH} height={HEIGHT} />
           </Layer>
           <Layer>
-            {strokes.map((stroke, i) => (
-              <Line
-                key={i}
-                points={stroke.points}
-                stroke={stroke.color}
-                strokeWidth={3}
-                hitStrokeWidth={20}
-                tension={0.4}
-                lineCap="round"
-                lineJoin="round"
-                onClick={() => handleStrokeClick(i)}
-                onTap={() => handleStrokeClick(i)}
-                onMouseEnter={(e) => {
-                  if (tool === 'eraser') e.target.getStage().container().style.cursor = 'pointer'
-                }}
-                onMouseLeave={(e) => {
-                  e.target.getStage().container().style.cursor = 'default'
-                }}
-              />
-            ))}
+            {strokes.map((stroke, i) => {
+              const errorIndex = markingResult
+                ? findErrorIndexForStroke(stroke, markingResult.errors)
+                : -1
+              const isError = errorIndex !== -1
+              return (
+                <Line
+                  key={i}
+                  points={stroke.points}
+                  stroke={isError ? ERROR_COLOR : stroke.color}
+                  strokeWidth={3}
+                  hitStrokeWidth={20}
+                  tension={0.4}
+                  lineCap="round"
+                  lineJoin="round"
+                  onClick={() => handleStrokeClick(i)}
+                  onTap={() => handleStrokeClick(i)}
+                  onMouseEnter={(e) => {
+                    if (tool === 'eraser') e.target.getStage().container().style.cursor = 'pointer'
+                    if (isError) setHoveredIndex(errorIndex)
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.getStage().container().style.cursor = 'default'
+                    if (isError) setHoveredIndex(null)
+                  }}
+                />
+              )
+            })}
             {livePoints && (
               <Line points={livePoints} stroke={color} strokeWidth={3} tension={0.4} lineCap="round" lineJoin="round" />
             )}
           </Layer>
-          <FeedbackOverlay
-            markingResult={markingResult}
-            width={WIDTH}
-            height={HEIGHT}
-            hoveredIndex={hoveredIndex}
-            onHoverError={setHoveredIndex}
-          />
+          <FeedbackOverlay markingResult={markingResult} width={WIDTH} height={HEIGHT} />
         </Stage>
         </div>
 

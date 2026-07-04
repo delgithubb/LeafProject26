@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Stage, Layer, Line } from 'react-konva'
 import GridBackground from './GridBackground'
 import { useWhiteboard } from '../../hooks/useWhiteboard'
@@ -8,15 +8,28 @@ const COLORS = ['#000000', '#1d4ed8', '#dc2626', '#16a34a']
 const WIDTH = 800
 const HEIGHT = 520
 
-function Whiteboard({ questionId, questionText, questionMarks }) {
-  const { strokes, addStroke, undo, removeStroke, clear } = useWhiteboard()
+const Whiteboard = forwardRef(function Whiteboard({ questionId, onSaved }, ref) {
+  const { strokes, addStroke, undo, removeStroke, clear, load } = useWhiteboard()
   const [tool, setTool] = useState('pen')
   const [color, setColor] = useState(COLORS[0])
   const isDrawing = useRef(false)
   const currentPoints = useRef([])
   const [livePoints, setLivePoints] = useState(null)
-  const [marking, setMarking] = useState(false)
   const stageRef = useRef(null)
+  const strokesRef = useRef(strokes)
+  strokesRef.current = strokes
+  const dirtyRef = useRef(false)
+
+  useEffect(() => {
+    if (!questionId) return
+    fetch(`/whiteboards/${questionId}.json?t=${Date.now()}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((loaded) => {
+        load(loaded)
+        dirtyRef.current = false
+      })
+      .catch(() => load([]))
+  }, [questionId, load])
 
   const handlePointerDown = (e) => {
     if (tool !== 'pen') return
@@ -38,6 +51,7 @@ function Whiteboard({ questionId, questionText, questionMarks }) {
     isDrawing.current = false
     if (currentPoints.current.length >= 4) {
       addStroke({ points: currentPoints.current, color })
+      dirtyRef.current = true
     }
     currentPoints.current = []
     setLivePoints(null)
@@ -46,13 +60,22 @@ function Whiteboard({ questionId, questionText, questionMarks }) {
   const handleStrokeClick = (index) => {
     if (tool !== 'eraser') return
     removeStroke(index)
+    dirtyRef.current = true
   }
 
-  const handleMark = async () => {
-    if (!stageRef.current) return
+  const handleUndo = () => {
+    undo()
+    dirtyRef.current = true
+  }
 
-    setMarking(true)
-    try {
+  const handleClear = () => {
+    clear()
+    dirtyRef.current = true
+  }
+
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      if (!stageRef.current || !dirtyRef.current) return
       const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 })
       const payload = {
         session_id: 'demo-session',
@@ -68,21 +91,16 @@ function Whiteboard({ questionId, questionText, questionMarks }) {
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/api/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          filename: questionId ?? 'whiteboard',
+          dataUrl,
+          strokes: strokesRef.current,
+        }),
       })
-
-      const data = await response.json()
-      console.log('Gemini response:', data)
-
-      if (!response.ok) {
-        console.error('Backend error:', data)
-      }
-    } catch (error) {
-      console.error('Failed to call backend:', error)
-    } finally {
-      setMarking(false)
-    }
-  }
+      dirtyRef.current = false
+      onSaved?.(questionId)
+    },
+  }))
 
   return (
     <div className="whiteboard">
@@ -106,11 +124,8 @@ function Whiteboard({ questionId, questionText, questionMarks }) {
             />
           ))}
         </div>
-        <button onClick={undo}>Undo</button>
-        <button onClick={clear}>Clear</button>
-        <button onClick={handleMark} disabled={marking}>
-          {marking ? 'Checking…' : 'Mark my work'}
-        </button>
+        <button onClick={handleUndo}>Undo</button>
+        <button onClick={handleClear}>Clear</button>
       </div>
 
       <Stage
@@ -156,6 +171,6 @@ function Whiteboard({ questionId, questionText, questionMarks }) {
       </Stage>
     </div>
   )
-}
+})
 
 export default Whiteboard

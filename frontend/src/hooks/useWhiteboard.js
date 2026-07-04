@@ -19,5 +19,9 @@ export function useWhiteboard() {
     setStrokes([])
   }, [])
 
-  return { strokes, addStroke, undo, removeStroke, clear }
+  const load = useCallback((loadedStrokes) => {
+    setStrokes(loadedStrokes ?? [])
+  }, [])
+
+  return { strokes, addStroke, undo, removeStroke, clear, load }
 }

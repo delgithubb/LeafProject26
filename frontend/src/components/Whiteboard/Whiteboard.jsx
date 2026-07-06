@@ -72,6 +72,7 @@ const Whiteboard = forwardRef(function Whiteboard(
   const strokesRef = useRef(strokes)
   strokesRef.current = strokes
   const dirtyRef = useRef(false)
+  const submittingRef = useRef(false)
 
   useEffect(() => {
     const container = containerRef.current
@@ -180,7 +181,8 @@ const Whiteboard = forwardRef(function Whiteboard(
   }))
 
   const submitForMarking = async () => {
-    if (!stageRef.current) return
+    if (!stageRef.current || submittingRef.current) return
+    submittingRef.current = true
 
     setMarking(true)
     setMarkError(null)
@@ -216,16 +218,18 @@ const Whiteboard = forwardRef(function Whiteboard(
       setMarkError('Could not reach the marking service. Check your connection and try again.')
     } finally {
       setMarking(false)
+      submittingRef.current = false
     }
   }
 
   return (
     <div className="whiteboard">
       <div className="whiteboard-toolbar">
-        <button className={tool === 'pen' ? 'active' : ''} onClick={() => setTool('pen')} disabled={isReadOnly}>
+        <button type="button" className={tool === 'pen' ? 'active' : ''} onClick={() => setTool('pen')} disabled={isReadOnly}>
           Pen
         </button>
         <button
+          type="button"
           className={tool === 'eraser' ? 'active' : ''}
           onClick={() => setTool('eraser')}
           disabled={isReadOnly}
@@ -236,6 +240,7 @@ const Whiteboard = forwardRef(function Whiteboard(
           {COLORS.map((c) => (
             <button
               key={c}
+              type="button"
               className={`color-swatch ${color === c ? 'active' : ''}`}
               style={{ backgroundColor: c }}
               disabled={isReadOnly}
@@ -246,16 +251,16 @@ const Whiteboard = forwardRef(function Whiteboard(
             />
           ))}
         </div>
-        <button onClick={handleUndo} disabled={isReadOnly}>
+        <button type="button" onClick={handleUndo} disabled={isReadOnly}>
           Undo
         </button>
-        <button onClick={handleClear} disabled={isReadOnly}>
+        <button type="button" onClick={handleClear} disabled={isReadOnly}>
           Clear
         </button>
         {isReadOnly ? (
-          <button onClick={handleTryAgain}>Try again</button>
+          <button type="button" onClick={handleTryAgain}>Try again</button>
         ) : (
-          <button onClick={submitForMarking} disabled={marking}>
+          <button type="button" onClick={submitForMarking} disabled={marking}>
             {marking ? 'Checking…' : 'Mark my answer'}
           </button>
         )}

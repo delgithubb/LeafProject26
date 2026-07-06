@@ -1,6 +1,8 @@
 import base64
 import binascii
+import logging
 import os
+import time
 from typing import Tuple
 
 from dotenv import load_dotenv
@@ -12,6 +14,9 @@ from pydantic import BaseModel, Field, field_validator
 
 # Load environment variables from .env
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("maths_tutor.mark")
 
 app = FastAPI(title="A-Level Maths Tutor Backend", version="0.1.0")
 
@@ -162,10 +167,23 @@ async def mark_work(payload: MarkRequest) -> MarkingResult:
     try:
         image_bytes, mime_type = _decode_image_payload(payload.image_base64)
     except ValueError as exc:
+        logger.error("Failed to decode image payload: %s", exc)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if not image_bytes:
         raise HTTPException(status_code=400, detail="Image payload cannot be empty.")
+
+    logger.info(
+        "Mark request received: question_id=%s session_id=%s model=%s marks=%s "
+        "image_bytes=%d mime_type=%s question_text_len=%d",
+        payload.question_id,
+        payload.session_id,
+        payload.model,
+        payload.marks,
+        len(image_bytes),
+        mime_type,
+        len(payload.question_text),
+    )
 
     prompt = f"""
 You are an A-level maths marking assistant. Review the handwritten student working shown in the image.
@@ -191,6 +209,12 @@ Instructions:
 
     try:
         client = _get_gemini_client()
+    except RuntimeError as exc:
+        logger.error("Gemini client initialization failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Gemini client setup failed: {exc}") from exc
+
+    start = time.perf_counter()
+    try:
         response = client.models.generate_content(
             model=payload.model,
             contents=[
@@ -202,14 +226,51 @@ Instructions:
                 response_schema=MarkingResult,
             ),
         )
-
-        response_text = getattr(response, "text", None)
-        if not response_text:
-            raise ValueError("Gemini returned an empty response.")
-
-        return MarkingResult.model_validate_json(response_text)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Gemini API Error: {exc}") from exc
+        logger.error(
+            "Gemini generate_content call failed after %.2fs: model=%s error_type=%s error=%s",
+            time.perf_counter() - start,
+            payload.model,
+            type(exc).__name__,
+            exc,
+        )
+        raise HTTPException(status_code=502, detail=f"Gemini request failed: {exc}") from exc
+
+    duration = time.perf_counter() - start
+    response_text = getattr(response, "text", None)
+
+    if not response_text:
+        logger.error(
+            "Gemini returned an empty response after %.2fs: model=%s prompt_feedback=%s candidates=%s",
+            duration,
+            payload.model,
+            getattr(response, "prompt_feedback", None),
+            getattr(response, "candidates", None),
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini returned an empty response (often caused by a safety filter block or an unsupported model name).",
+        )
+
+    logger.info("Gemini responded in %.2fs: model=%s response_chars=%d", duration, payload.model, len(response_text))
+
+    try:
+        result = MarkingResult.model_validate_json(response_text)
+    except Exception as exc:
+        logger.error(
+            "Gemini response did not match the MarkingResult schema: error=%s raw_response=%s",
+            exc,
+            response_text[:2000],
+        )
+        raise HTTPException(status_code=502, detail=f"Gemini response did not match the expected schema: {exc}") from exc
+
+    logger.info(
+        "Marking parsed successfully: errors=%d completions=%d detected_lines=%d",
+        len(result.errors),
+        len(result.completions),
+        len(result.detected_lines),
+    )
+    return result
 
 
 @app.get("/api/health", response_model=HealthResponse)

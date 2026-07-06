@@ -1,7 +1,7 @@
 import { Layer, Text } from 'react-konva'
 
-const MIN_FONT = 14
-const MAX_FONT = 36
+const MIN_FONT = 18
+const MAX_FONT = 26
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
